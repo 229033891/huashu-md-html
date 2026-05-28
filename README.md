@@ -306,7 +306,7 @@ MIT License — 个人和商业使用均自由，无需授权。
 
 ## 联系花叔（Huasheng）
 
-花叔是 AI Native Coder、独立开发者、AI 自媒体博主。代表作：小猫补光灯（App Store 付费榜 Top 1）、《一本书玩转 DeepSeek》、[nuwa-skill](https://github.com/alchaincyf/nuwa-skill)（GitHub 12k+ stars）、[huashu-design](https://github.com/alchaincyf/huashu-design)。全平台累计粉丝 30 万+。
+花叔是 AI Native Coder、独立开发者、AI 自媒体博主。代表作：小猫补光灯（App Store 付费榜 Top 1）、《一本书玩转 DeepSeek》、[nuwa-skill](https://github.com/alchaincyf/nuwa-skill)（GitHub 21k+ stars）、[huashu-design](https://github.com/alchaincyf/huashu-design)。全平台累计粉丝 30 万+。
 
 | 平台 | 账号 | 链接 |
 |------|------|------|
