@@ -57,9 +57,9 @@ URL 输入时**两条路径都能跑**，但产出质量差异巨大。Microsoft
 
 收到「转换/美化/导入」类任务时，**不要直接执行**。先问：
 
-1. **能力是哪个**？三选一（用决策树自检）
+1. **能力是哪个**？四选一（用决策树自检）
 2. **来源/去向**？文件路径 / URL / 字符串？输出到哪？
-3. **能力2专属问**：模板选哪个？（article默认 / report / reading / interactive）
+3. **能力2专属问**：模板选哪个？（article默认 / report / reading / interactive / wechat）
 4. **特殊需求**？（图片处理：保留相对路径 还是 base64嵌入？语言：中文版/英文版？）
 
 回答清楚再动手。不要默认猜，错了用户返工成本远大于多问一句。
@@ -131,7 +131,8 @@ python scripts/md_to_html.py article.md
 # 选模板
 python scripts/md_to_html.py report.md --theme report      # 宽体多表格，适合技术报告/白皮书
 python scripts/md_to_html.py article.md --theme reading    # Medium极简，适合公众号转接
-python scripts/md_to_html.py book.md --theme interactive   # 折叠目录+SVG图，适合长文/橙皮书
+python scripts/md_to_html.py book.md --theme interactive   # 侧栏 TOC + scrollspy，适合长文/橙皮书
+python scripts/md_to_html.py post.md --theme wechat        # 公众号粘贴向
 
 # 输出位置
 python scripts/md_to_html.py input.md -o out.html
@@ -149,21 +150,26 @@ python scripts/md_to_html.py input.md --copy-images        # 拷贝到output目�
 - **遗留 ANSI（多为 GBK）的 .md / 本地 .html**：读入时会先试 UTF-8（含 BOM），再试 GBK；也可用 **`--input-encoding gbk`** 强制。
 - **控制台输出**：四个入口脚本在 **`main()`** 开头对 **`stdout`/`stderr`** 执行 **`reconfigure(encoding=utf-8)`**（Python 3.7+），减轻 GBK 控制台下打印中文、`--help` 含符号时报错；仍建议在 Windows 终端启用 UTF-8（「全球语言支持」或 **`chcp 65001`**）以获得一致体验。
 
-### 4套模板速览
+### 4 套主题 + wechat
 
 | 模板 | 哲学锚点 | 适合场景 |
 |------|---------|---------|
 | **article** | Tufte CSS启发，Pentagram式信息建筑 | essay、博客、深度阅读、独立文章 |
 | **report** | 出版社白皮书风，多表格密度型 | 技术报告、调研、白皮书、产品文档 |
 | **reading** | Medium风极简，单栏窄体大字 | 公众号转接、纯阅读、轻量分发 |
-| **interactive** | 长文档导航型，折叠+目录+边栏 | 橙皮书章节、技术书籍、长教程 |
+| **interactive** | 长文档导航型：侧栏 TOC + scrollspy | 橙皮书章节、技术书籍、长教程 |
+| **wechat** | 公众号粘贴友好（可选） | 需复制进微信编辑器时 |
 
-每个模板都是**自包含单CSS**，HTML打开即可用，不依赖外部CDN。
+- **interactive** 默认开启 `--toc`；侧栏依赖模板把 `nav#TOC` 放在 `body` 直接子节点。折叠块请在 md 中写 HTML `<details>`，脚本不会自动生成 SVG 插图。
+- 每个主题均为**自包含 CSS**；article/report/reading/interactive/wechat 均带 `template.html5`。
 
 ### 依赖
 
-- `brew install pandoc`（必装，二进制）
-- 脚本启动时自动检查`which pandoc`，缺失则提示安装命令
+- Pandoc（必装，二进制）：
+  - macOS：`brew install pandoc`
+  - Debian/Ubuntu：`apt install pandoc`
+  - Windows：`choco install pandoc` 或 [官网安装包](https://pandoc.org/installing.html)
+- 脚本启动时自动检查 `which`/`where` pandoc，缺失则提示上述命令
 
 完整cookbook见 `references/md-to-html-themes.md`。
 
@@ -240,6 +246,9 @@ python3 scripts/md_to_docx.py article.md --images-dir ./images
 python3 scripts/md_to_docx.py ch01.md ch02.md ch03.md -o combined.docx
 
 # 完整书模式（自动加封面 + 目录 + 页眉页脚 + 章节分页）
+# 注意：bash/zsh 下 ch*.md 会通配展开；Windows PowerShell 请写成：
+#   python scripts/md_to_docx.py (Get-ChildItem md-v2\ch*.md).FullName ...
+# 或依赖脚本内置的 glob 展开（传入带 * 的参数亦可）
 python3 scripts/md_to_docx.py ch*.md postscript.md appendix.md --book \
     --title "图解 Agent Skills" \
     --subtitle "让 AI 记住你的工作方式" \
@@ -369,7 +378,7 @@ python scripts/md_to_docx.py paper.md --page-size a4 -o paper.docx
 | 场景 | 处理 |
 |------|------|
 | markitdown未安装 | 脚本检测后提示`pip install 'markitdown[all]'`，不静默失败 |
-| pandoc未安装 | 脚本检测后提示`brew install pandoc`，给出官方下载地址 |
+| pandoc未安装 | 脚本检测后提示 brew / apt / choco 或官网下载，给出官方下载地址 |
 | 输入文件不存在 | 立即报错，不假装继续 |
 | URL请求失败（能力1的YouTube/能力3的URL） | 降级提示：检查网络/VPN/CDN |
 | 转换出空内容 | 报警：可能是扫描PDF或图片密集型文档，提示用 `--llm-describe` |
@@ -397,5 +406,6 @@ python scripts/md_to_docx.py paper.md --page-size a4 -o paper.docx
 - **URL输入双路径**：结构化页面用能力1（保metadata+层级+链接），博客类用能力3（去导航+只留正文）。判断捷径——内容是「读的」走3，是「查的」走1。
 - **docx 是给人的，不是给 LLM 的**：给出版社/编辑/投稿系统就用能力4。能力2 的 html 适合自己看、网上分享，不适合编辑改稿。
 - **Junior先问，再做**：模板选哪个、图片要不要嵌入、是否要LLM描述图片、单文件还是书籍模式——一次问清，不要边做边猜。
-- **依赖外部工具**：markitdown（pip）、pandoc（brew）、html-to-markdown（pip）、python-docx（pip）。脚本启动时自检，缺失明确提示。
-- **Python环境陷阱**：macOS 上 `pip` 和 `python3` 可能指向不同 Python 版本（实测踩过：`pip` 是 3.11、`python3` 是 3.14）。安装依赖必须用 `python3 -m pip install ...`，不要直接 `pip install`。
+- **依赖外部工具**：markitdown（pip）、pandoc（brew/apt/choco）、html-to-markdown（pip）、python-docx + Pillow（pip）。脚本启动时自检，缺失明确提示。
+- **Python环境陷阱**：macOS / Windows 上 `pip` 和 `python`/`python3` 可能指向不同解释器。安装依赖必须用 `python -m pip install ...` 或 `python3 -m pip install ...`，不要直接 `pip install`。
+- **Windows 通配符**：`ch*.md` 在 PowerShell 不会像 bash 自动展开；脚本 `md_to_docx.py` 已内置 glob，或用 `Get-ChildItem`。

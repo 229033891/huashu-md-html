@@ -1,9 +1,13 @@
 # huashu-md-html — Python dependencies
 #
 # System dependency (install separately): pandoc
-#   macOS:        brew install pandoc
+#   macOS:         brew install pandoc
 #   Debian/Ubuntu: apt install pandoc
-#   Windows:      choco install pandoc
+#   Windows:       choco install pandoc
+#                  或 https://pandoc.org/installing.html
+#
+# 安装请用：python -m pip install -r requirements.txt
+# （勿直接 pip install，避免装到错误的 Python）
 
 # Capability 1: any → md
 markitdown[all]>=0.1.5
@@ -12,6 +16,10 @@ markitdown[all]>=0.1.5
 html-to-markdown>=3.3.0
 trafilatura>=2.0.0
 markdownify>=1.2.0
+
+# Capability 4: md → docx
+python-docx>=1.1.0
+Pillow>=10.0.0
 
 # Optional — capability 1 with LLM image description
 # openai>=1.0.0

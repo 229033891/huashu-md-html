@@ -24,11 +24,12 @@ from _encoding_io import reconfigure_stdio_utf8
 HELP_INSTALL = """
 markitdown is not installed. Install it with:
 
-    pip install 'markitdown[all]'
+    python -m pip install 'markitdown[all]'
+    # or: python3 -m pip install 'markitdown[all]'
 
 Or, for a slimmer install (only the formats you need):
 
-    pip install 'markitdown[pdf,docx,pptx,xlsx]'
+    python -m pip install 'markitdown[pdf,docx,pptx,xlsx]'
 """
 
 
@@ -95,7 +96,7 @@ def build_converter(args: argparse.Namespace):
             from openai import OpenAI
         except ImportError:
             sys.stderr.write(
-                "--llm-describe requires the 'openai' package: pip install openai\n",
+                "--llm-describe requires the 'openai' package: python -m pip install openai\n",
             )
             sys.exit(2)
         if not os.environ.get("OPENAI_API_KEY"):

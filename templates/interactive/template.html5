@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="$if(lang)$$lang$$else$zh-CN$endif$" xml:lang="$if(lang)$$lang$$else$zh-CN$endif$">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="generator" content="huashu-md-html · interactive theme" />
+$for(author-meta)$  <meta name="author" content="$author-meta$" />
+$endfor$
+$if(date-meta)$  <meta name="dcterms.date" content="$date-meta$" />$endif$
+$if(keywords)$  <meta name="keywords" content="$for(keywords)$$keywords$$sep$, $endfor$" />$endif$
+$if(description-meta)$  <meta name="description" content="$description-meta$" />$endif$
+  <title>$if(title-prefix)$$title-prefix$ – $endif$$pagetitle$</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400;1,6..72,500&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" />
+$for(css)$  <link rel="stylesheet" href="$css$" />
+$endfor$
+$for(header-includes)$
+  $header-includes$
+$endfor$
+</head>
+<body>
+$for(include-before)$
+  $include-before$
+$endfor$
+
+$if(toc)$
+  <!-- TOC must be a direct child of body for sidebar CSS (body > nav#TOC) -->
+  <nav id="TOC" role="doc-toc" aria-label="目录">
+$table-of-contents$
+  </nav>
+$endif$
+
+$if(title)$
+  <header class="title-block" role="banner">
+$if(eyebrow)$    <div class="eyebrow">$eyebrow$</div>$endif$
+    <h1 class="title">$title$</h1>
+$if(subtitle)$    <p class="subtitle">$subtitle$</p>$endif$
+$if(author)$    <div class="byline">
+$for(author)$      <span class="author">$author$</span>$sep$ · $endfor$
+    </div>$endif$
+$if(date)$    <time class="date" datetime="$date$">$date$</time>$endif$
+  </header>
+$endif$
+
+  <main role="main">
+    <article>
+$body$
+    </article>
+  </main>
+
+$for(include-after)$
+  $include-after$
+$endfor$
+
+  <script>
+    (function () {
+      // TOC scrollspy → .active
+      var links = Array.prototype.slice.call(
+        document.querySelectorAll('nav#TOC a[href^="#"]')
+      );
+      if (links.length) {
+        var map = links.map(function (a) {
+          var id = a.getAttribute('href').slice(1);
+          return { a: a, el: document.getElementById(id) };
+        }).filter(function (x) { return x.el; });
+
+        var onScroll = function () {
+          var y = window.scrollY || document.documentElement.scrollTop;
+          var current = null;
+          for (var i = 0; i < map.length; i++) {
+            if (map[i].el.offsetTop - 96 <= y) current = map[i];
+          }
+          links.forEach(function (a) { a.classList.remove('active'); });
+          if (current) current.a.classList.add('active');
+        };
+        document.addEventListener('scroll', onScroll, { passive: true });
+        onScroll();
+
+        links.forEach(function (a) {
+          a.addEventListener('click', function (e) {
+            var target = document.querySelector(a.getAttribute('href'));
+            if (target) {
+              e.preventDefault();
+              target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              history.pushState(null, '', a.getAttribute('href'));
+            }
+          });
+        });
+      }
+
+      // Code copy
+      document.querySelectorAll('pre > code').forEach(function (code) {
+        var pre = code.parentElement;
+        if (pre.querySelector('.copy-btn')) return;
+        var btn = document.createElement('button');
+        btn.className = 'copy-btn';
+        btn.type = 'button';
+        btn.setAttribute('aria-label', 'Copy code');
+        btn.textContent = 'Copy';
+        btn.addEventListener('click', function () {
+          navigator.clipboard.writeText(code.innerText).then(function () {
+            btn.textContent = 'Copied';
+            setTimeout(function () { btn.textContent = 'Copy'; }, 1600);
+          }, function () {
+            btn.textContent = 'Failed';
+          });
+        });
+        pre.appendChild(btn);
+      });
+    })();
+  </script>
+</body>
+</html>

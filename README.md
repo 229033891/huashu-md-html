@@ -131,7 +131,7 @@ python scripts/any_to_md.py spec.xlsx -o spec.raw.md --no-clean-excel-tables
 | **article** | Tufte CSS 启发 · Pentagram 式信息建筑 | essay、博客、深度阅读、独立文章 |
 | **report** | 出版社白皮书风 · 多表格密度型 | 技术报告、调研、白皮书、产品文档 |
 | **reading** | Medium 风极简 · 单栏窄体大字 | 公众号转接、纯阅读、轻量分发 |
-| **interactive** | 长文档导航型 · 折叠 + 目录 + 边栏 | 橙皮书章节、技术书籍、长教程 |
+| **interactive** | 长文档导航型 · 侧栏 TOC + scrollspy | 橙皮书章节、技术书籍、长教程 |
 
 <table>
 <tr>
@@ -140,7 +140,7 @@ python scripts/any_to_md.py spec.xlsx -o spec.raw.md --no-clean-excel-tables
 </tr>
 <tr>
 <td width="50%"><img src="examples/output/reading.png" alt="reading 主题预览"><br><sub><b>reading</b> · Medium 风 · 单栏极简</sub></td>
-<td width="50%"><img src="examples/output/interactive.png" alt="interactive 主题预览"><br><sub><b>interactive</b> · 长文档 · 侧边栏 + 折叠目录</sub></td>
+<td width="50%"><img src="examples/output/interactive.png" alt="interactive 主题预览"><br><sub><b>interactive</b> · 长文档 · 侧栏 TOC + scrollspy</sub></td>
 </tr>
 </table>
 
@@ -246,7 +246,7 @@ python3 scripts/md_to_docx.py paper.md --page-size a4 -o paper.docx
 | 工具 | 用途 | 安装 |
 |------|------|------|
 | `markitdown` | 万物 → md | `python3 -m pip install 'markitdown[all]'` |
-| `pandoc` | md → html | `brew install pandoc`（macOS）/ [官网下载](https://pandoc.org/installing.html) |
+| `pandoc` | md → html | macOS: `brew install pandoc` · Linux: `apt install pandoc` · Windows: `choco install pandoc` / [官网](https://pandoc.org/installing.html) |
 | `html-to-markdown` | html → md（高速 Rust 引擎）| `python3 -m pip install html-to-markdown` |
 | `trafilatura` | URL 正文提取 | `python3 -m pip install trafilatura` |
 | `python-docx` + `Pillow` | md → 精美 docx | `python3 -m pip install python-docx Pillow` |

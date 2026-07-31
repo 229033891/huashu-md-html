@@ -47,7 +47,7 @@ from _encoding_io import read_text_path, reconfigure_stdio_utf8
 try:
     from PIL import Image as PILImage
 except ImportError:
-    print("缺少依赖：python3 -m pip install Pillow", file=sys.stderr)
+    print("缺少依赖：python -m pip install Pillow", file=sys.stderr)
     sys.exit(1)
 
 try:
@@ -58,7 +58,7 @@ try:
     from docx.oxml.ns import qn
     from docx.oxml import OxmlElement
 except ImportError:
-    print("缺少依赖：python3 -m pip install python-docx", file=sys.stderr)
+    print("缺少依赖：python -m pip install python-docx", file=sys.stderr)
     sys.exit(1)
 
 
@@ -798,7 +798,20 @@ def main():
     )
     args = ap.parse_args()
 
-    md_files = [Path(f) for f in args.md_files]
+    # Expand globs (bash does this; Windows PowerShell often does not)
+    import glob as _glob
+
+    md_files: list[Path] = []
+    for pattern in args.md_files:
+        if any(ch in pattern for ch in "*?["):
+            matched = sorted(_glob.glob(pattern))
+            if matched:
+                md_files.extend(Path(m) for m in matched)
+            else:
+                md_files.append(Path(pattern))
+        else:
+            md_files.append(Path(pattern))
+
     for md in md_files:
         if not md.exists():
             print(f"❌ 找不到：{md}", file=sys.stderr)

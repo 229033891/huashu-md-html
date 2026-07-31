@@ -2,11 +2,12 @@
 """
 md_to_html.py — Convert Markdown to a polished, self-contained HTML using Pandoc + huashu-md-html themes.
 
-Four themes available:
+Four themes + wechat:
   - article       : Tufte-inspired editorial (essays, blogs, deep reading)
   - report        : Wide-body publishing-grade (technical reports, whitepapers)
   - reading       : Medium-style minimal (read-only, social repost)
-  - interactive   : Long-form with collapsible TOC + sidebar (books, deep guides)
+  - interactive   : Long-form with sidebar TOC + scrollspy (books, deep guides)
+  - wechat        : WeChat editor paste-friendly preview
 
 Consumes Markdown (UTF-8 by preference; auto fallback GBK on Windows); subprocess stdin to Pandoc is always UTF-8.
 """
@@ -123,7 +124,13 @@ def load_theme(theme: str) -> tuple[Path, Path | None]:
         sys.stderr.write(f"[error] theme '{theme}' is missing CSS at: {css_path}\n")
         sys.exit(2)
     template_path = theme_dir / "template.html5"
-    return css_path, template_path if template_path.exists() else None
+    if not template_path.exists():
+        sys.stderr.write(
+            f"[error] theme '{theme}' is missing template.html5 at: {template_path}\n"
+            "Each theme must ship both theme.css and template.html5.\n",
+        )
+        sys.exit(2)
+    return css_path, template_path
 
 
 def infer_title_and_strip(

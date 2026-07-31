@@ -23,7 +23,8 @@ from _encoding_io import read_text_path, reconfigure_stdio_utf8
 HELP_INSTALL = """\
 Required packages are missing. Install with:
 
-    pip install html-to-markdown trafilatura markdownify
+    python -m pip install html-to-markdown trafilatura markdownify
+    # or: python3 -m pip install html-to-markdown trafilatura markdownify
 """
 
 
