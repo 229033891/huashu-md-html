@@ -82,26 +82,39 @@ python scripts/any_to_md.py "https://learn.microsoft.com/en-us/credentials/certi
 # 启用LLM图片描述（需要OPENAI_API_KEY环境变量）
 python scripts/any_to_md.py photo.jpg --llm-describe
 
-# 本地 Excel（默认开启表格后处理，见下文）
+# 本地 Excel（默认 excel-smart：合并单元格填充 + 空行分表 + L1 清噪）
 python scripts/any_to_md.py spec.xlsx -o spec.md
 
-# 保留 markitdown 原始表格输出（不做 NaN/Unnamed 清理）
-python scripts/any_to_md.py spec.xlsx -o spec.raw.md --no-clean-excel-tables
+# 退回 markitdown + L1 清理
+python scripts/any_to_md.py spec.xlsx -o spec.md --no-excel-smart
+
+# 保留 markitdown 原始表格输出（不做任何清理）
+python scripts/any_to_md.py spec.xlsx -o spec.raw.md --no-excel-smart --no-clean-excel-tables
 ```
 
-### 本地 Excel 表格后处理（`.xlsx` / `.xls` / `.xlsm`）
+### 本地 Excel（`.xlsx` / `.xls` / `.xlsm`）
 
-MarkItDown 经 pandas 导出 Excel 时，空单元格常变成 `NaN`、未命名列变成 `Unnamed: n`。`any_to_md.py` 对**本地路径**的 Excel 在写入 md 前默认做一轮 Markdown 表格清理（URL 下载的 Excel 不处理）：
+对**本地路径**的 Excel（URL 下载的不走此路径）：
+
+| 模式 | 何时 | 行为 |
+|------|------|------|
+| **excel-smart（默认）** | `.xlsx` / `.xlsm` 且已装 openpyxl | 合并单元格填充；空行切多表；双行表头合并为 `上级 / 下级`；删全空列；公式取缓存值 |
+| **markitdown + L1** | `.xls`、smart 失败、或 `--no-excel-smart` | MarkItDown 导出后再清 `NaN`/`Unnamed`、删全空列 |
+| **raw** | `--no-excel-smart --no-clean-excel-tables` | MarkItDown 原文 |
+
+**L1 清理规则**（markitdown 路径）：
 
 | 规则 | 行为 |
 |------|------|
 | 单元格 | `NaN` / `nan` / `<NA>` → 空；`Unnamed: n` → 空 |
-| 整列 | 在表头/数据行上始终为空 → 删除该列（`---` 分隔行不计入“有内容”） |
-| 尾部 | 从右向左删除「表头/数据行在这几列都为空」的尾部列 |
+| 整列 | 表头/数据行始终为空 → 删除（`---` 分隔行不计） |
+| 尾部 | 从右删掉全空尾列 |
 
-**仍可能保留的空列**：层级/合并单元格式布局（如 EDI / Shipping Instruction 宽表）在不同行交替占用左侧占位列，这些列不能当「空列」删掉——这是展平成矩形表格的正常现象，不是清理失败。
+**仍可能保留的空列**：层级/合并布局在不同行交替占位时，不能当空列删——展平矩形表的正常现象。
 
-关闭清理：`--no-clean-excel-tables`。
+**依赖**：excel-smart 需要 `openpyxl`（`python -m pip install openpyxl`；通常已随 `markitdown[all]` / pandas 生态安装）。
+
+关闭 smart：`--no-excel-smart`。关闭 L1：`--no-clean-excel-tables`（仅 markitdown 路径）。
 
 ### 支持的格式
 
@@ -110,11 +123,11 @@ PDF、DOCX、PPTX、XLSX、XLS、HTML、CSV、JSON、XML、图片（EXIF/可选L
 ### 已知坑（写在脚本输出里提醒用户）
 
 - 扫描PDF不做OCR，需要挂LLM client或Azure Doc Intelligence
-- 复杂表格（合并单元格/嵌套）会丢失语义；本地 Excel 另有默认后处理（见上节）
+- 复杂表格仍可能丢语义（透视表/图表/未缓存公式）；本地 Excel 默认 excel-smart（见上节）
 - PPTX只保留文本+备注，动画排版完全丢
 - 输出**为LLM消费设计**，给人读还要再过一道排版
 
-依赖：`pip install 'markitdown[all]'`（自动检测，缺失时提示安装）。
+依赖：`pip install 'markitdown[all]'`（自动检测，缺失时提示安装）；excel-smart 另需 `openpyxl`。
 
 完整cookbook见 `references/markitdown-cookbook.md`。
 

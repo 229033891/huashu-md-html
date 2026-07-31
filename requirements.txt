@@ -11,6 +11,8 @@
 
 # Capability 1: any → md
 markitdown[all]>=0.1.5
+openpyxl>=3.1.0
+# .xls（旧版）可选：xlrd>=2.0.1（走 markitdown 回退路径时由生态拉取）
 
 # Capability 3: html/url → md
 html-to-markdown>=3.3.0

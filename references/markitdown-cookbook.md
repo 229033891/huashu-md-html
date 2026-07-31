@@ -69,17 +69,26 @@ python scripts/any_to_md.py deck.pptx -o out.md
 ### XLSX / XLS
 
 ```bash
+# 默认：excel-smart（合并单元格填充、空行分表、双行表头）
 python scripts/any_to_md.py spreadsheet.xlsx -o out.md
+
+# 退回 markitdown + L1 清噪
+python scripts/any_to_md.py spreadsheet.xlsx -o out.md --no-excel-smart
 ```
 
-**输出**：每个worksheet 转成 markdown table。
+**输出**：每个可见 worksheet → `## SheetName` + markdown table；同 sheet 内空行切开的多块表标为 `### 表 N`。
 
-**坑**：
-- 公式不会被evaluate，只看cell的当前值
-- 合并单元格 → 拆开
-- 数据透视表、图表 → 丢失
+**excel-smart 会做**：
+- 合并区填充（空格子补成左上角值）
+- 双行表头 → `上级 / 下级`
+- 删四周/全空列；`NaN`/`Unnamed` 变空
 
-**替代**：复杂Excel分析用 `xlsx` skill 或 pandas 直接处理，这里只用于"提取干净文本喂AI"。
+**仍会丢**：
+- 未打开保存过的公式缓存可能为空（`data_only`）
+- 数据透视表、图表、条件格式、形状
+- 极宽表里「交替占位」的结构性空列可能仍在
+
+**替代**：要改单元格/精确对账用 Excel MCP 或 pandas；这里只用于「提取干净文本喂 AI」。
 
 ### HTML
 

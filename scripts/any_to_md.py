@@ -6,8 +6,10 @@ Supports: PDF, DOCX, PPTX, XLSX, XLS, HTML, CSV, JSON, XML, EPub, ZIP,
 images (EXIF + optional LLM description), audio (with transcription),
 YouTube URLs (with auto subtitles), Outlook .msg, and more.
 
-Local Excel (.xlsx/.xls/.xlsm): post-processes markdown tables (NaN/<NA>/Unnamed:n → empty,
-drops columns that are entirely empty, trims trailing all-empty columns).
+Local Excel (.xlsx/.xls/.xlsm):
+  - 默认 excel-smart（L2）：openpyxl 展开合并单元格、空行分表、双行表头合并、删空列
+  - .xls 或不支持时回退 markitdown，再做 L1 表清理（NaN/Unnamed → 空、删全空列）
+  - --no-excel-smart / --no-clean-excel-tables 可关闭
 
 Part of huashu-md-html skill — md is source, html is product.
 """
@@ -79,9 +81,14 @@ def parse_args() -> argparse.Namespace:
         help="Suppress non-error stderr output.",
     )
     p.add_argument(
+        "--no-excel-smart",
+        action="store_true",
+        help="Disable openpyxl structure-aware Excel→md; use markitdown (+ L1 clean unless --no-clean-excel-tables).",
+    )
+    p.add_argument(
         "--no-clean-excel-tables",
         action="store_true",
-        help="For .xlsx/.xls/.xlsm files, skip post-clean (NaN→empty, drop all-empty columns).",
+        help="When using markitdown path, skip L1 post-clean (NaN→empty, drop all-empty columns).",
     )
     return p.parse_args()
 
@@ -235,24 +242,54 @@ def warn_known_pitfalls(source: str, content: str, quiet: bool) -> None:
 
 def main() -> int:
     reconfigure_stdio_utf8()
-    ensure_markitdown()
     args = parse_args()
 
-    converter = build_converter(args)
+    content = ""
+    excel_mode = ""
 
-    try:
-        result = converter.convert(args.source)
-    except Exception as exc:  # noqa: BLE001 — markitdown wraps various errors
-        sys.stderr.write(f"[error] markitdown failed: {exc}\n")
-        return 1
-
-    content = result.text_content or ""
+    # 本地 Excel：优先 L2 excel-smart（.xlsx/.xlsm）
     if (
-        not args.no_clean_excel_tables
+        not args.no_excel_smart
         and _is_local_excel_path(args.source)
-        and content.strip()
     ):
-        content = _clean_markdown_tables(content)
+        src_path = Path(args.source)
+        if src_path.is_file():
+            # 保证同目录可 import excel_smart
+            scripts_dir = str(Path(__file__).resolve().parent)
+            if scripts_dir not in sys.path:
+                sys.path.insert(0, scripts_dir)
+            try:
+                from excel_smart import try_convert  # noqa: WPS433 — 同目录模块
+            except ImportError:
+                try_convert = None  # type: ignore[assignment]
+            if try_convert is not None:
+                smart_md = try_convert(src_path)
+                if smart_md is not None:
+                    content = smart_md
+                    excel_mode = "excel-smart"
+                elif not args.quiet:
+                    sys.stderr.write(
+                        "[hint] excel-smart failed or unsupported; falling back to markitdown.\n",
+                    )
+
+    if not content:
+        ensure_markitdown()
+        converter = build_converter(args)
+        try:
+            result = converter.convert(args.source)
+        except Exception as exc:  # noqa: BLE001 — markitdown wraps various errors
+            sys.stderr.write(f"[error] markitdown failed: {exc}\n")
+            return 1
+        content = result.text_content or ""
+        if (
+            not args.no_clean_excel_tables
+            and _is_local_excel_path(args.source)
+            and content.strip()
+        ):
+            content = _clean_markdown_tables(content)
+            excel_mode = excel_mode or "markitdown+L1"
+        elif _is_local_excel_path(args.source):
+            excel_mode = excel_mode or "markitdown"
 
     out_path = resolve_output_path(args.source, args.output)
     if out_path is None:
@@ -261,7 +298,8 @@ def main() -> int:
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(content, encoding="utf-8")
         if not args.quiet:
-            sys.stderr.write(f"[ok] {args.source} → {out_path}\n")
+            suffix = f" [{excel_mode}]" if excel_mode else ""
+            sys.stderr.write(f"[ok] {args.source} → {out_path}{suffix}\n")
 
     warn_known_pitfalls(args.source, content, args.quiet)
     return 0
