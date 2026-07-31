@@ -106,6 +106,20 @@ URL 既能走能力 1（markitdown）也能走能力 3（trafilatura），但产
 
 **判断捷径**：URL 里的内容是「读」的还是「查」的？读 → 能力 3（去噪），查 → 能力 1（保信息）。
 
+### 本地 Excel 表格后处理
+
+`scripts/any_to_md.py` 对**本地** `.xlsx` / `.xls` / `.xlsm` 在 MarkItDown 输出后默认清理 Markdown 表格：
+
+- 单元格：`NaN`、`nan`、`<NA>`、`Unnamed: n` → 空
+- 删除整张表中始终为空的列；并去掉右侧「每行都空」的尾部列
+
+```bash
+python scripts/any_to_md.py spec.xlsx -o spec.md
+python scripts/any_to_md.py spec.xlsx -o spec.raw.md --no-clean-excel-tables
+```
+
+层级/合并单元格式表格（如 EDI 字段说明）展平后，中间仍可能留有空列——不同行在左侧占位列交替有内容，属正常现象。
+
 ---
 
 ## 4 套 html 主题
@@ -239,6 +253,8 @@ python3 scripts/md_to_docx.py paper.md --page-size a4 -o paper.docx
 
 脚本启动时会自检，缺失的依赖会明确提示安装命令，不会静默失败。
 
+**md → html**：Markdown 请使用 UTF-8；`md_to_html.py` 以 UTF-8 对接 Pandoc，输出 HTML 亦为 UTF-8。若在编辑器中看到类似「Ã¿°ü…」的乱码，请将文件编码设为 UTF-8 后再查看。**若源文件为 Windows ANSI（多为 GBK）**，脚本会先试 UTF-8 再试 GBK，或使用 `--input-encoding gbk`。
+
 > ⚠️ **macOS Python 环境陷阱**：`pip` 和 `python3` 可能指向不同的 Python 版本（实测踩过：`pip` 是 3.11、`python3` 是 3.14）。安装依赖请用 `python3 -m pip install ...`，不要直接 `pip install`。
 
 ---
@@ -306,7 +322,7 @@ MIT License — 个人和商业使用均自由，无需授权。
 
 ## 联系花叔（Huasheng）
 
-花叔是 AI Native Coder、独立开发者、AI 自媒体博主。代表作：小猫补光灯（App Store 付费榜 Top 1）、《一本书玩转 DeepSeek》、[nuwa-skill](https://github.com/alchaincyf/nuwa-skill)（GitHub 21k+ stars）、[huashu-design](https://github.com/alchaincyf/huashu-design)。全平台累计粉丝 30 万+。
+花叔是 AI Native Coder、独立开发者、AI 自媒体博主。代表作：小猫补光灯（App Store 付费榜 Top 1）、《一本书玩转 DeepSeek》、[nuwa-skill](https://github.com/alchaincyf/nuwa-skill)（GitHub 12k+ stars）、[huashu-design](https://github.com/alchaincyf/huashu-design)。全平台累计粉丝 30 万+。
 
 | 平台 | 账号 | 链接 |
 |------|------|------|

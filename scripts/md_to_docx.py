@@ -42,6 +42,8 @@ import re
 import sys
 from pathlib import Path
 
+from _encoding_io import read_text_path, reconfigure_stdio_utf8
+
 try:
     from PIL import Image as PILImage
 except ImportError:
@@ -673,7 +675,8 @@ def add_header_footer(doc, header_text=""):
 # ============================================================
 def build_docx(md_files, output, images_dir=None, book_mode=False,
                title=None, subtitle=None, author=None, extra_info=None,
-               chapter_labels=None, page_size="book"):
+               chapter_labels=None, page_size="book",
+               input_encoding=None):
     doc = Document()
     setup_page(doc, page_size=page_size)
 
@@ -687,7 +690,7 @@ def build_docx(md_files, output, images_dir=None, book_mode=False,
             label = (chapter_labels[idx] if chapter_labels
                      and idx < len(chapter_labels)
                      else "")
-            text = Path(md).read_text(encoding="utf-8")
+            text = read_text_path(Path(md), input_encoding)
             m = re.search(r"^#\s+(.+)$", text, re.MULTILINE)
             chapter_title = m.group(1).strip() if m else Path(md).stem
             chapter_title = re.sub(r"^\d{2}\s+", "", chapter_title)
@@ -703,7 +706,7 @@ def build_docx(md_files, output, images_dir=None, book_mode=False,
             print(f"  ⚠ 跳过：{md_path}", file=sys.stderr)
             continue
 
-        md_text = md_path.read_text(encoding="utf-8")
+        md_text = read_text_path(md_path, input_encoding)
         image_refs = extract_image_refs(md_text)
         blocks = parse_blocks(md_text, image_refs)
         chapter_label = (chapter_labels[idx] if chapter_labels
@@ -768,6 +771,7 @@ def build_docx(md_files, output, images_dir=None, book_mode=False,
 
 
 def main():
+    reconfigure_stdio_utf8()
     ap = argparse.ArgumentParser(
         description="把 markdown 加工成出版社级 docx",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -786,6 +790,12 @@ def main():
                     help="章号标签，逗号分隔（如「第 1 章,第 2 章,后记」）")
     ap.add_argument("--page-size", choices=["book", "a4"], default="book",
                     help="页面规格：book=大 32 开 / a4=A4")
+    ap.add_argument(
+        "--input-encoding",
+        metavar="ENC",
+        default=None,
+        help="输入 .md 编码（如 utf-8、gbk）。默认：先 UTF-8 再 GBK。",
+    )
     args = ap.parse_args()
 
     md_files = [Path(f) for f in args.md_files]
@@ -821,6 +831,7 @@ def main():
         extra_info=args.extra_info,
         chapter_labels=chapter_labels,
         page_size=args.page_size,
+        input_encoding=args.input_encoding,
     )
 
 

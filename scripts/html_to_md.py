@@ -17,6 +17,8 @@ import sys
 from pathlib import Path
 from typing import Iterable
 
+from _encoding_io import read_text_path, reconfigure_stdio_utf8
+
 
 HELP_INSTALL = """\
 Required packages are missing. Install with:
@@ -91,6 +93,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Suppress non-error stderr output.",
     )
+    p.add_argument(
+        "--input-encoding",
+        metavar="ENC",
+        default=None,
+        help="Local HTML file encoding (e.g. utf-8, gbk). Default: UTF-8 then GBK. Ignored for URLs.",
+    )
     return p.parse_args()
 
 
@@ -149,6 +157,7 @@ def resolve_output_path(source: str, output: str | None) -> Path | None:
 
 
 def main() -> int:
+    reconfigure_stdio_utf8()
     args = parse_args()
 
     # Engine resolution
@@ -170,7 +179,7 @@ def main() -> int:
         if not path.exists():
             sys.stderr.write(f"[error] file not found: {path}\n")
             return 1
-        html = path.read_text(encoding="utf-8")
+        html = read_text_path(path, args.input_encoding)
 
     # Extract main content for URLs
     cleaned_html = html

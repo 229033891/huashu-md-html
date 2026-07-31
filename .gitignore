@@ -29,3 +29,7 @@ Thumbs.db
 # 用户私有数据
 .env
 .env.local
+
+# Local runtime binaries (pandoc/ffmpeg)
+tools/
+

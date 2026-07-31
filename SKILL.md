@@ -81,7 +81,27 @@ python scripts/any_to_md.py "https://learn.microsoft.com/en-us/credentials/certi
 
 # 启用LLM图片描述（需要OPENAI_API_KEY环境变量）
 python scripts/any_to_md.py photo.jpg --llm-describe
+
+# 本地 Excel（默认开启表格后处理，见下文）
+python scripts/any_to_md.py spec.xlsx -o spec.md
+
+# 保留 markitdown 原始表格输出（不做 NaN/Unnamed 清理）
+python scripts/any_to_md.py spec.xlsx -o spec.raw.md --no-clean-excel-tables
 ```
+
+### 本地 Excel 表格后处理（`.xlsx` / `.xls` / `.xlsm`）
+
+MarkItDown 经 pandas 导出 Excel 时，空单元格常变成 `NaN`、未命名列变成 `Unnamed: n`。`any_to_md.py` 对**本地路径**的 Excel 在写入 md 前默认做一轮 Markdown 表格清理（URL 下载的 Excel 不处理）：
+
+| 规则 | 行为 |
+|------|------|
+| 单元格 | `NaN` / `nan` / `<NA>` → 空；`Unnamed: n` → 空 |
+| 整列 | 整张表该列始终为空 → 删除该列 |
+| 尾部 | 从右向左删除「每一行在这几列都为空」的尾部列 |
+
+**仍可能保留的空列**：层级/合并单元格式布局（如 EDI 字段说明表）在不同行交替占用左侧占位列，这些列不能当「空列」删掉——这是展平成矩形表格的正常现象，不是清理失败。
+
+关闭清理：`--no-clean-excel-tables`。
 
 ### 支持的格式
 
@@ -90,7 +110,7 @@ PDF、DOCX、PPTX、XLSX、XLS、HTML、CSV、JSON、XML、图片（EXIF/可选L
 ### 已知坑（写在脚本输出里提醒用户）
 
 - 扫描PDF不做OCR，需要挂LLM client或Azure Doc Intelligence
-- 复杂表格（合并单元格/嵌套）会丢失语义
+- 复杂表格（合并单元格/嵌套）会丢失语义；本地 Excel 另有默认后处理（见上节）
 - PPTX只保留文本+备注，动画排版完全丢
 - 输出**为LLM消费设计**，给人读还要再过一道排版
 
@@ -120,6 +140,14 @@ python scripts/md_to_html.py input.md -o out.html
 python scripts/md_to_html.py input.md --inline-images      # base64嵌入（自包含单文件）
 python scripts/md_to_html.py input.md --copy-images        # 拷贝到output目录（默认保持相对路径）
 ```
+
+### 编码与中文（Windows）
+
+- **推荐管线**：仓库内 Markdown / 生成的 HTML 统一 **UTF-8**（无 BOM 或有 BOM 均可）；脚本写入 Pandoc 的 stdin 固定为 **UTF-8** 字节。
+- 产出 HTML 为 **UTF-8**，`<meta charset="utf-8" />`；若在编辑器里仍看到「Ã¿°ü…」一类乱码，请把编辑器编码设为 **UTF-8**（那是把 UTF-8 误当成 Latin-1 打开所致）。
+- 正文中若含汉字，脚本会向 Pandoc 传入 **`lang=zh-CN`**（缺省模板原先 `lang` 为空）；article/interactive 等自带模板仍以各自 `template.html5` 为准。
+- **遗留 ANSI（多为 GBK）的 .md / 本地 .html**：读入时会先试 UTF-8（含 BOM），再试 GBK；也可用 **`--input-encoding gbk`** 强制。
+- **控制台输出**：四个入口脚本在 **`main()`** 开头对 **`stdout`/`stderr`** 执行 **`reconfigure(encoding=utf-8)`**（Python 3.7+），减轻 GBK 控制台下打印中文、`--help` 含符号时报错；仍建议在 Windows 终端启用 UTF-8（「全球语言支持」或 **`chcp 65001`**）以获得一致体验。
 
 ### 4套模板速览
 

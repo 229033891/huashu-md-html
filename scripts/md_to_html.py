@@ -8,7 +8,7 @@ Four themes available:
   - reading       : Medium-style minimal (read-only, social repost)
   - interactive   : Long-form with collapsible TOC + sidebar (books, deep guides)
 
-Part of huashu-md-html skill — md is source, html is product.
+Consumes Markdown (UTF-8 by preference; auto fallback GBK on Windows); subprocess stdin to Pandoc is always UTF-8.
 """
 from __future__ import annotations
 
@@ -21,6 +21,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from _encoding_io import decode_process_stderr, read_text_path, reconfigure_stdio_utf8
 
 SKILL_ROOT = Path(__file__).resolve().parent.parent
 TEMPLATE_DIR = SKILL_ROOT / "templates"
@@ -106,6 +107,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Suppress non-error stderr output.",
     )
+    p.add_argument(
+        "--input-encoding",
+        metavar="ENC",
+        default=None,
+        help="Force input .md encoding (e.g. utf-8, gbk). Default: try UTF-8 then GBK (Windows ANSI).",
+    )
     return p.parse_args()
 
 
@@ -119,13 +126,17 @@ def load_theme(theme: str) -> tuple[Path, Path | None]:
     return css_path, template_path if template_path.exists() else None
 
 
-def infer_title_and_strip(md_path: Path, override: str | None) -> tuple[str, str]:
+def infer_title_and_strip(
+    md_path: Path,
+    override: str | None,
+    input_encoding: str | None = None,
+) -> tuple[str, str]:
     """Return (title, md_text_with_leading_h1_stripped).
 
     Pandoc's --standalone renders a title block from metadata, so we strip
     the leading H1 from the body to avoid duplicate titles.
     """
-    raw = md_path.read_text(encoding="utf-8")
+    raw = read_text_path(md_path, input_encoding)
     lines = raw.splitlines()
 
     # Find first non-blank line
@@ -212,6 +223,15 @@ def copy_images_alongside(images: list[Path], src_base: Path, out_dir: Path, qui
                 sys.stderr.write(f"[copied] {img} → {dest}\n")
 
 
+def infer_html_lang(md_text: str) -> str | None:
+    """If body contains CJK ideographs, set html lang for Pandoc (-V lang=...)."""
+    for ch in md_text:
+        o = ord(ch)
+        if 0x4E00 <= o <= 0x9FFF or 0x3400 <= o <= 0x4DBF:
+            return "zh-CN"
+    return None
+
+
 def build_pandoc_command(
     pandoc_bin: str,
     md_input: Path | str,
@@ -220,6 +240,7 @@ def build_pandoc_command(
     template_path: Path | None,
     title: str,
     args: argparse.Namespace,
+    html_lang: str | None = None,
 ) -> list[str]:
     cmd = [
         pandoc_bin,
@@ -236,6 +257,8 @@ def build_pandoc_command(
     cmd.extend(["--css", str(css_path)])
     if template_path:
         cmd.extend(["--template", str(template_path)])
+    if html_lang:
+        cmd.extend(["-V", f"lang={html_lang}"])
     if should_emit_toc(args):
         cmd.extend(["--toc", "--toc-depth=3"])
     if args.katex:
@@ -244,6 +267,7 @@ def build_pandoc_command(
 
 
 def main() -> int:
+    reconfigure_stdio_utf8()
     pandoc_bin = ensure_pandoc()
     args = parse_args()
 
@@ -256,8 +280,10 @@ def main() -> int:
     output_html.parent.mkdir(parents=True, exist_ok=True)
 
     css_path, template_path = load_theme(args.theme)
-    title, md_text = infer_title_and_strip(input_md, args.title)
+    title, md_text = infer_title_and_strip(input_md, args.title, args.input_encoding)
     src_base = input_md.parent
+
+    html_lang = infer_html_lang(md_text)
 
     if args.copy_images:
         images = collect_local_images(md_text, src_base)
@@ -266,17 +292,29 @@ def main() -> int:
 
     # Pipe the stripped markdown to pandoc via stdin to avoid temp files
     cmd = build_pandoc_command(
-        pandoc_bin, "-", output_html, css_path, template_path, title, args,
+        pandoc_bin,
+        "-",
+        output_html,
+        css_path,
+        template_path,
+        title,
+        args,
+        html_lang=html_lang,
     )
 
     try:
-        proc = subprocess.run(cmd, input=md_text, capture_output=True, text=True)
+        proc = subprocess.run(
+            cmd,
+            input=md_text.encode("utf-8"),
+            capture_output=True,
+        )
     except FileNotFoundError:
         sys.stderr.write(HELP_PANDOC)
         return 2
 
     if proc.returncode != 0:
-        sys.stderr.write(proc.stderr or "[error] pandoc failed without stderr output.\n")
+        err = decode_process_stderr(proc.stderr or b"")
+        sys.stderr.write(err or "[error] pandoc failed without stderr output.\n")
         return proc.returncode
 
     if args.inline_images:

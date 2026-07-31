@@ -6,17 +6,22 @@ Supports: PDF, DOCX, PPTX, XLSX, XLS, HTML, CSV, JSON, XML, EPub, ZIP,
 images (EXIF + optional LLM description), audio (with transcription),
 YouTube URLs (with auto subtitles), Outlook .msg, and more.
 
+Local Excel (.xlsx/.xls/.xlsm): post-processes markdown tables (NaN/<NA>/Unnamed:n → empty,
+drops columns that are entirely empty, trims trailing all-empty columns).
+
 Part of huashu-md-html skill — md is source, html is product.
 """
 from __future__ import annotations
 
 import argparse
 import os
+import re
 import sys
 from pathlib import Path
 
+from _encoding_io import reconfigure_stdio_utf8
 
-HELP_INSTALL = """\
+HELP_INSTALL = """
 markitdown is not installed. Install it with:
 
     pip install 'markitdown[all]'
@@ -72,6 +77,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Suppress non-error stderr output.",
     )
+    p.add_argument(
+        "--no-clean-excel-tables",
+        action="store_true",
+        help="For .xlsx/.xls/.xlsm files, skip post-clean (NaN→empty, drop all-empty columns).",
+    )
     return p.parse_args()
 
 
@@ -114,6 +124,83 @@ def resolve_output_path(source: str, output: str | None) -> Path | None:
     return Path(Path(source).stem + ".md")
 
 
+_EXCEL_SUFFIXES = frozenset({".xlsx", ".xls", ".xlsm"})
+
+
+def _is_local_excel_path(source: str) -> bool:
+    if "://" in source:
+        return False
+    try:
+        return Path(source).suffix.lower() in _EXCEL_SUFFIXES
+    except OSError:
+        return False
+
+
+def _clean_table_cell(text: str) -> str:
+    s = text.strip()
+    if s in {"NaN", "<NA>", "nan"}:
+        return ""
+    if re.fullmatch(r"Unnamed:\s*\d+", s):
+        return ""
+    return text.strip()
+
+
+def _is_markdown_table_row(line: str) -> bool:
+    s = line.strip()
+    return len(s) >= 2 and s.startswith("|") and s.endswith("|")
+
+
+def _parse_table_row(line: str) -> list[str]:
+    inner = line.strip()[1:-1]
+    return [_clean_table_cell(c) for c in inner.split("|")]
+
+
+def _normalize_row_width(rows: list[list[str]], width: int) -> None:
+    for r in rows:
+        while len(r) < width:
+            r.append("")
+        del r[width:]
+
+
+def _clean_markdown_tables(md: str) -> str:
+    """Normalize MarkItDown/pandas-style Excel tables: drop NaN/Unnamed noise, remove empty columns."""
+    lines = md.splitlines()
+    out: list[str] = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if _is_markdown_table_row(line):
+            block: list[str] = []
+            while i < len(lines) and _is_markdown_table_row(lines[i]):
+                block.append(lines[i])
+                i += 1
+            rows = [_parse_table_row(row) for row in block]
+            if not rows:
+                out.extend(block)
+                continue
+            width = max(len(r) for r in rows)
+            _normalize_row_width(rows, width)
+            keep_cols = [
+                j
+                for j in range(width)
+                if any((r[j] if j < len(r) else "") != "" for r in rows)
+            ]
+            if not keep_cols:
+                out.extend(block)
+                continue
+            slim_rows = [[r[j] for j in keep_cols if j < len(r)] for r in rows]
+            while slim_rows and all(not (row[-1] if row else "").strip() for row in slim_rows):
+                for row in slim_rows:
+                    if row:
+                        row.pop()
+            for slim in slim_rows:
+                out.append("| " + " | ".join(slim) + " |")
+            continue
+        out.append(line)
+        i += 1
+    return "\n".join(out)
+
+
 def warn_known_pitfalls(source: str, content: str, quiet: bool) -> None:
     if quiet:
         return
@@ -130,6 +217,7 @@ def warn_known_pitfalls(source: str, content: str, quiet: bool) -> None:
 
 
 def main() -> int:
+    reconfigure_stdio_utf8()
     ensure_markitdown()
     args = parse_args()
 
@@ -142,6 +230,12 @@ def main() -> int:
         return 1
 
     content = result.text_content or ""
+    if (
+        not args.no_clean_excel_tables
+        and _is_local_excel_path(args.source)
+        and content.strip()
+    ):
+        content = _clean_markdown_tables(content)
 
     out_path = resolve_output_path(args.source, args.output)
     if out_path is None:
