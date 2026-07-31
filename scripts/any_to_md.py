@@ -162,6 +162,23 @@ def _normalize_row_width(rows: list[list[str]], width: int) -> None:
         del r[width:]
 
 
+def _is_separator_row(row: list[str]) -> bool:
+    """True for GFM separator rows like ``| --- | :---: |`` (must not count as column content)."""
+    if not row:
+        return False
+    return all((not c.strip()) or re.fullmatch(r":?-{3,}:?", c.strip()) for c in row)
+
+
+def _col_has_content(rows: list[list[str]], col: int) -> bool:
+    """Whether any non-separator data/header cell in this column is non-empty."""
+    for r in rows:
+        if _is_separator_row(r):
+            continue
+        if (r[col] if col < len(r) else "").strip():
+            return True
+    return False
+
+
 def _clean_markdown_tables(md: str) -> str:
     """Normalize MarkItDown/pandas-style Excel tables: drop NaN/Unnamed noise, remove empty columns."""
     lines = md.splitlines()
@@ -180,16 +197,15 @@ def _clean_markdown_tables(md: str) -> str:
                 continue
             width = max(len(r) for r in rows)
             _normalize_row_width(rows, width)
-            keep_cols = [
-                j
-                for j in range(width)
-                if any((r[j] if j < len(r) else "") != "" for r in rows)
-            ]
+            keep_cols = [j for j in range(width) if _col_has_content(rows, j)]
             if not keep_cols:
                 out.extend(block)
                 continue
-            slim_rows = [[r[j] for j in keep_cols if j < len(r)] for r in rows]
-            while slim_rows and all(not (row[-1] if row else "").strip() for row in slim_rows):
+            slim_rows = [[r[j] for j in keep_cols] for r in rows]
+            # Drop trailing empty columns again (ignore separator rows)
+            while slim_rows and slim_rows[0] and not any(
+                (r[-1].strip() if r and not _is_separator_row(r) else False) for r in slim_rows
+            ):
                 for row in slim_rows:
                     if row:
                         row.pop()
